@@ -64,15 +64,15 @@ sequenceDiagram
 
 ### Safety rules already built in
 
-| Risk | How it is handled |
-|---|---|
-| Citizen changes the amount | The client sends only `service_code`. The server decides amount and head of account ([fees.py](app/services/fees.py)). |
-| Double payment on retry | `reference_id` is unique per user, so re-sending returns the same payment. |
-| Fake "payment successful" page | Status changes only through a verified callback, never a browser redirect. |
-| Forged or tampered callback | The adapter verifies the payload, and the service rejects any amount mismatch. |
-| Duplicate or racing callbacks | One atomic `PENDING → final` change. Repeats are accepted, contradictions return 409. |
-| Callback never arrives | `POST /payments/{txn}/reconcile` asks eGRAS directly. |
-| Going live half-finished | eGRAS mode won't start until the adapter is complete. Mock mode can't run in production. |
+| Risk                           | How it is handled                                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Citizen changes the amount     | The client sends only `service_code`. The server decides amount and head of account ([fees.py](app/services/fees.py)). |
+| Double payment on retry        | `reference_id` is unique per user, so re-sending returns the same payment.                                             |
+| Fake "payment successful" page | Status changes only through a verified callback, never a browser redirect.                                             |
+| Forged or tampered callback    | The adapter verifies the payload, and the service rejects any amount mismatch.                                         |
+| Duplicate or racing callbacks  | One atomic `PENDING → final` change. Repeats are accepted, contradictions return 409.                                  |
+| Callback never arrives         | `POST /payments/{txn}/reconcile` asks eGRAS directly.                                                                  |
+| Going live half-finished       | eGRAS mode won't start until the adapter is complete. Mock mode can't run in production.                               |
 
 ---
 
@@ -152,7 +152,11 @@ python -m pytest -q
    - `x-user-id`: any UUID, for example `11111111-1111-4111-8111-111111111111`
 4. Use this request body and click **Execute**:
    ```json
-   {"reference_id": "APP-2026-000123", "service_code": "DEMO_CERTIFICATE", "payer_name": "Demo Citizen"}
+   {
+     "reference_id": "APP-2026-000123",
+     "service_code": "DEMO_CERTIFICATE",
+     "payer_name": "Demo Citizen"
+   }
    ```
 5. Copy `checkout.url` from the response and open it in a new tab. This is the mock eGRAS payment page.
 6. Click **Pay**. The page shows `Payment SUCCESS` and a mock GRN.
@@ -183,16 +187,16 @@ curl -s http://localhost:8000/payments/<txn_number> -H "X-API-Key: $KEY" -H "X-U
 
 ### API reference
 
-| Method | Path | Called by | Purpose |
-|---|---|---|---|
-| `GET` | `/payments/fees` | Department backend | Payable services and their amounts |
-| `POST` | `/payments` | Department backend | Create a payment and get the checkout redirect |
-| `GET` | `/payments` | Department backend | User's payments, filter by `status` / `reference_id` |
-| `GET` | `/payments/{txn_number}` | Department backend | Authoritative payment status |
-| `POST` | `/payments/{txn_number}/reconcile` | Department backend | Re-verify a PENDING payment with eGRAS |
-| `POST` | `/egras/callback` | eGRAS | Payment result (JSON or form post) |
-| `GET/POST` | `/mock-egras/checkout/...` | Browser (mock mode only) | Pretend payment page |
-| `GET` | `/health` | Monitoring | Health check |
+| Method     | Path                               | Called by                | Purpose                                              |
+| ---------- | ---------------------------------- | ------------------------ | ---------------------------------------------------- |
+| `GET`      | `/payments/fees`                   | Department backend       | Payable services and their amounts                   |
+| `POST`     | `/payments`                        | Department backend       | Create a payment and get the checkout redirect       |
+| `GET`      | `/payments`                        | Department backend       | User's payments, filter by `status` / `reference_id` |
+| `GET`      | `/payments/{txn_number}`           | Department backend       | Authoritative payment status                         |
+| `POST`     | `/payments/{txn_number}/reconcile` | Department backend       | Re-verify a PENDING payment with eGRAS               |
+| `POST`     | `/egras/callback`                  | eGRAS                    | Payment result (JSON or form post)                   |
+| `GET/POST` | `/mock-egras/checkout/...`         | Browser (mock mode only) | Pretend payment page                                 |
+| `GET`      | `/health`                          | Monitoring               | Health check                                         |
 
 Department endpoints need `X-API-Key`, plus `X-User-ID` for the citizen. **`X-User-ID` is for the demo only.**
 Replace it with your portal's real login (JWT/OIDC) before production.
@@ -249,18 +253,18 @@ tests/                          # end-to-end tests with the mock gateway
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| `Activate.ps1 cannot be loaded because running scripts is disabled` | Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, then activate again. |
-| `'python' is not recognized` / `command not found` | Install Python 3.11+ and tick "Add Python to PATH" (Windows), or use `python3` (macOS/Linux). |
-| Start-up error `API_KEY must be set and at least 32 characters long` | `.env` is missing or the value is too short. Repeat setup step 4. |
-| Start-up error `API_KEY and MOCK_CALLBACK_SECRET must be different` | Generate two separate values. |
-| Start-up error `app/gateways/egras.py is not completed yet` | You set `GATEWAY_MODE=egras` before finishing the adapter. Use `mock` until then. |
-| `401 Invalid API key` | The `X-API-Key` header doesn't match `API_KEY` in `.env`. Restart the server after editing `.env`. |
-| `401 A valid X-User-ID (UUID) header is required` | Send a UUID such as `11111111-1111-4111-8111-111111111111`. |
-| `409 reference_id already used for a different service` | Each `reference_id` belongs to one service. Use a new reference. |
-| Port 8000 already in use | `uvicorn app.main:app --reload --port 8001` |
-| Payments disappear after restart | Expected in the demo (in-memory store). Connect your database to keep them. |
+| Problem                                                              | Fix                                                                                                |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `Activate.ps1 cannot be loaded because running scripts is disabled`  | Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, then activate again.             |
+| `'python' is not recognized` / `command not found`                   | Install Python 3.11+ and tick "Add Python to PATH" (Windows), or use `python3` (macOS/Linux).      |
+| Start-up error `API_KEY must be set and at least 32 characters long` | `.env` is missing or the value is too short. Repeat setup step 4.                                  |
+| Start-up error `API_KEY and MOCK_CALLBACK_SECRET must be different`  | Generate two separate values.                                                                      |
+| Start-up error `app/gateways/egras.py is not completed yet`          | You set `GATEWAY_MODE=egras` before finishing the adapter. Use `mock` until then.                  |
+| `401 Invalid API key`                                                | The `X-API-Key` header doesn't match `API_KEY` in `.env`. Restart the server after editing `.env`. |
+| `401 A valid X-User-ID (UUID) header is required`                    | Send a UUID such as `11111111-1111-4111-8111-111111111111`.                                        |
+| `409 reference_id already used for a different service`              | Each `reference_id` belongs to one service. Use a new reference.                                   |
+| Port 8000 already in use                                             | `uvicorn app.main:app --reload --port 8001`                                                        |
+| Payments disappear after restart                                     | Expected in the demo (in-memory store). Connect your database to keep them.                        |
 
 ## FAQ
 
@@ -290,3 +294,7 @@ government. It contains no government credentials, internal documents or persona
 needs authorisation from your state's treasury and follows its official specification.
 
 MIT licensed, see [LICENSE](LICENSE). © Visual App Foundry · **[vaf.ai](https://vaf.ai)**
+
+# egras-payment-gateway-integration
+
+eGRAS payment gateway integration in Python (FastAPI). Online challan payment, secure callback verification and double verification, with a working mock so you can run it in 5 minutes. No credentials needed.
